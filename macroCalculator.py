@@ -48,7 +48,7 @@ def return_food_entry(foodArg='') -> Dict:
 
         print("\nHere's what you entered:\nFood: {}\nCalories: {}\nProtein: {}\nCarbohydrates: {}\n"
               "Fat: {}\nFiber: {}".format(
-            foodName, calories, proteinAmount, carbohydrateAmount, fatAmount, fiberAmount))
+               foodName, calories, proteinAmount, carbohydrateAmount, fatAmount, fiberAmount))
         answer = input("Is this the correct information? Type 'y' or 'n'>>").lower()
 
         if answer == 'y':
@@ -145,7 +145,7 @@ def track_macros(connection: sqlite3.Connection, cursor: sqlite3.Cursor):
     print("\nYou consumed the foods: {}.".format(", ".join(foodsEaten)))
     print("You ate a total of {} calories, {} grams of protein, {} grams of fat,"
           " {} grams of carbohydrates, and {} grams of fiber.".format(
-           totalCalories, totalProtein, totalFat, totalCarbohydrate, totalFiber))
+        totalCalories, totalProtein, totalFat, totalCarbohydrate, totalFiber))
     print("{}% of calories from {} grams of protein.".format(proteinPercentage, totalProtein))
     print("{}% of calories from {} grams of fat.".format(fatPercentage, totalFat))
     print("{}% of calories from {} grams of carbohydrates.".format(carbohydratePercentage, totalCarbohydrate))

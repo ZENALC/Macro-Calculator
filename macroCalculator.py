@@ -1,5 +1,5 @@
 import sqlite3
-from typing import Tuple, Dict
+from typing import Tuple, Dict, List
 
 
 # Simple function that creates a connection with a filename given and returns a connection and cursor.
@@ -18,11 +18,11 @@ def close_db(connection: sqlite3.Connection):
 def create_table(connection: sqlite3.Connection, cursor: sqlite3.Cursor):
     cursor.execute('''CREATE TABLE IF NOT EXISTS foods(
                        Food TEXT NOT NULL PRIMARY KEY,
-                       Calories INT NOT NULL,
-                       Protein INT NOT NULL,
-                       Fat INT NOT NULL,
-                       Carbohydrate INT NOT NULL,
-                       Fiber INT NOT NULL
+                       Calories REAL NOT NULL,
+                       Protein REAL NOT NULL,
+                       Fat REAL NOT NULL,
+                       Carbohydrate REAL NOT NULL,
+                       Fiber REAL NOT NULL
                        );''')
     connection.commit()
 
@@ -33,14 +33,19 @@ def return_food_entry(foodArg='') -> Dict:
             foodName = input("Please enter in the food's name>>").lower().capitalize()
         else:
             foodName = foodArg.lower().capitalize()
-        calories = int(input("Please enter in the food's calories>>"))
-        proteinAmount = int(input("Please enter in the food's protein amount>>"))
-        carbohydrateAmount = int(input("Please enter in the food's carbohydrate amount>>"))
-        fatAmount = int(input("Please enter in the food's fat amount>>"))
-        fiberAmount = int(input("Please enter in the food's fiber amount>>"))
+        try:
+            calories = float(input("Please enter in the food's calories>>"))
+            proteinAmount = float(input("Please enter in the food's protein amount>>"))
+            carbohydrateAmount = float(input("Please enter in the food's carbohydrate amount>>"))
+            fatAmount = float(input("Please enter in the food's fat amount>>"))
+            fiberAmount = float(input("Please enter in the food's fiber amount>>"))
+        except ValueError:
+            print("Please type in only numbers. Restarting entry...\n")
+            continue
 
-        lowerLimit = fatAmount * 9 + carbohydrateAmount * 4 + proteinAmount * 4 - 10
-        upperLimit = fatAmount * 9 + carbohydrateAmount * 4 + proteinAmount * 4 + 10
+        lowerLimit = fatAmount * 9 + (carbohydrateAmount - fiberAmount) * 4 + proteinAmount * 4 - 4
+        upperLimit = fatAmount * 9 + (carbohydrateAmount - fiberAmount) * 4 + proteinAmount * 4 + 4
+
         if not lowerLimit < calories < upperLimit:
             print("The calories don't seem right for the macro-nutrients. "
                   "Disregarding this entry and restarting...\n")
@@ -49,13 +54,14 @@ def return_food_entry(foodArg='') -> Dict:
         print("\nHere's what you entered:\nFood: {}\nCalories: {}\nProtein: {}\nCarbohydrates: {}\n"
               "Fat: {}\nFiber: {}".format(
                foodName, calories, proteinAmount, carbohydrateAmount, fatAmount, fiberAmount))
-        answer = input("Is this the correct information? Type 'y' or 'n'>>").lower()
-
-        if answer == 'y':
-            return {"food": foodName, "calories": calories, "protein": proteinAmount,
-                    "carbohydrate": carbohydrateAmount, "fat": fatAmount, "fiber": fiberAmount}
-        else:
-            print("Disregarding this entry and restarting...\n")
+        answer = ''
+        while answer not in ['n', 'y']:
+            answer = input("Is this the correct information? Type 'y' or 'n'>>").lower()
+            if answer == 'y':
+                return {"food": foodName, "calories": calories, "protein": proteinAmount,
+                        "carbohydrate": carbohydrateAmount, "fat": fatAmount, "fiber": fiberAmount}
+            elif answer == 'n':
+                print("Disregarding this entry and restarting...\n")
 
 
 def save_to_database(food: Dict, connection: sqlite3.Connection, cursor: sqlite3.Cursor):
@@ -141,15 +147,31 @@ def track_macros(connection: sqlite3.Connection, cursor: sqlite3.Cursor):
     fatPercentage = int(totalFat * 9 * 100 / totalCalories)
     carbohydratePercentage = int(totalCarbohydrate * 4 * 100 / totalCalories)
     remainingPercentage = 100 - proteinPercentage - fatPercentage - carbohydratePercentage
+    prettyFoodsEaten = return_pretty_consumption(foodsEaten)
 
-    print("\nYou consumed the foods: {}.".format(", ".join(foodsEaten)))
-    print("You ate a total of {} calories, {} grams of protein, {} grams of fat,"
-          " {} grams of carbohydrates, and {} grams of fiber.".format(
+    print("\nYou consumed the foods: {}.".format(", ".join(prettyFoodsEaten)))
+    print("You ate a total of {} calories, {:.2f} grams of protein, {:.2f} grams of fat,"
+          " {:.2f} grams of carbohydrates, and {:.2f} grams of fiber.".format(
            totalCalories, totalProtein, totalFat, totalCarbohydrate, totalFiber))
     print("{}% of calories from {} grams of protein.".format(proteinPercentage, totalProtein))
     print("{}% of calories from {} grams of fat.".format(fatPercentage, totalFat))
     print("{}% of calories from {} grams of carbohydrates.".format(carbohydratePercentage, totalCarbohydrate))
     print("{}% of calories are inaccurate from incorrect data.\n".format(abs(remainingPercentage)))
+
+
+def return_pretty_consumption(foodsEaten: List[str]):
+    prettyFoodsEaten = []
+    for food in foodsEaten:
+        if food in prettyFoodsEaten:
+            continue
+        count = foodsEaten.count(food)
+        if count > 1:
+            totalElement = str(count) + "x " + food + "s"
+        else:
+            totalElement = str(count) + "x " + food
+        if totalElement not in prettyFoodsEaten:
+            prettyFoodsEaten.append(totalElement)
+    return prettyFoodsEaten
 
 
 def main():
@@ -175,7 +197,7 @@ def main():
                 while entryAnswer != 'n':
                     entry = return_food_entry()
                     save_to_database(entry, connection, cursor)
-                    entryAnswer = input("\nWould you like to add another food?>> Type 'n' to stop "
+                    entryAnswer = input("Would you like to add another food?>> Type 'n' to stop "
                                         "or anything else to continue>>").lower()
         elif promptAnswer == 't':
             track_macros(connection, cursor)

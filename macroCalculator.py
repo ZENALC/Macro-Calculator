@@ -34,31 +34,23 @@ def return_food_entry(foodArg='') -> Dict:
         else:
             foodName = foodArg.lower().capitalize()
         try:
-            calories = float(input("Please enter in the food's calories>>"))
             proteinAmount = float(input("Please enter in the food's protein amount>>"))
             carbohydrateAmount = float(input("Please enter in the food's carbohydrate amount>>"))
             fatAmount = float(input("Please enter in the food's fat amount>>"))
             fiberAmount = float(input("Please enter in the food's fiber amount>>"))
+            calories = proteinAmount * 4 + (carbohydrateAmount - fiberAmount) * 4 + fatAmount * 9
         except ValueError:
             print("Please type in only numbers. Restarting entry...\n")
             continue
 
-        lowerLimit = fatAmount * 9 + (carbohydrateAmount - fiberAmount) * 4 + proteinAmount * 4 - 4
-        upperLimit = fatAmount * 9 + (carbohydrateAmount - fiberAmount) * 4 + proteinAmount * 4 + 4
-
-        if not lowerLimit < calories < upperLimit:
-            print("The calories don't seem right for the macro-nutrients. "
-                  "Disregarding this entry and restarting...\n")
-            continue
-
-        print("\nHere's what you entered:\nFood: {}\nCalories: {}\nProtein: {}\nCarbohydrates: {}\n"
-              "Fat: {}\nFiber: {}".format(
+        print("\nHere's what you entered:\nFood: {}\nCalories: {:.2f}\nProtein: {:.2f}g\nCarbohydrates: {:.2f}g\n"
+              "Fat: {:.2f}g\nFiber: {:.2f}g".format(
                foodName, calories, proteinAmount, carbohydrateAmount, fatAmount, fiberAmount))
         answer = ''
         while answer not in ['n', 'y']:
             answer = input("Is this the correct information? Type 'y' or 'n'>>").lower()
             if answer == 'y':
-                return {"food": foodName, "calories": calories, "protein": proteinAmount,
+                return {"food": foodName.strip(), "calories": calories, "protein": proteinAmount,
                         "carbohydrate": carbohydrateAmount, "fat": fatAmount, "fiber": fiberAmount}
             elif answer == 'n':
                 print("Disregarding this entry and restarting...\n")
@@ -121,11 +113,12 @@ def track_macros(connection: sqlite3.Connection, cursor: sqlite3.Cursor):
                 if addFood == 'a':
                     result = return_food_entry(foodArg=foodEaten)
                     save_to_database(result, connection, cursor)
-                    totalCalories += result['Calories']
-                    totalCarbohydrate += result['Carbohydrate']
-                    totalFat += result['Fat']
-                    totalProtein += result['Protein']
-                    totalFiber += result['Fiber']
+                    totalCalories += result['calories']
+                    totalCarbohydrate += result['carbohydrate']
+                    totalFat += result['fat']
+                    totalProtein += result['protein']
+                    totalFiber += result['fiber']
+                    print("This food has been added to foods eaten.")
                     break
         else:
             totalCalories += result[1]
@@ -143,20 +136,21 @@ def track_macros(connection: sqlite3.Connection, cursor: sqlite3.Cursor):
         print("No foods were provided, so no information is available to display. Going back to main query...\n")
         return
 
-    proteinPercentage = int(totalProtein * 4 * 100 / totalCalories)
-    fatPercentage = int(totalFat * 9 * 100 / totalCalories)
-    carbohydratePercentage = int(totalCarbohydrate * 4 * 100 / totalCalories)
+    proteinPercentage = totalProtein * 4 * 100 / totalCalories
+    fatPercentage = totalFat * 9 * 100 / totalCalories
+    carbohydratePercentage = (totalCarbohydrate - totalFiber) * 4 * 100 / totalCalories
     remainingPercentage = 100 - proteinPercentage - fatPercentage - carbohydratePercentage
     prettyFoodsEaten = return_pretty_consumption(foodsEaten)
 
     print("\nYou consumed the foods: {}.".format(", ".join(prettyFoodsEaten)))
-    print("You ate a total of {} calories, {:.2f} grams of protein, {:.2f} grams of fat,"
+    print("You ate a total of {:.2f} calories, {:.2f} grams of protein, {:.2f} grams of fat,"
           " {:.2f} grams of carbohydrates, and {:.2f} grams of fiber.".format(
            totalCalories, totalProtein, totalFat, totalCarbohydrate, totalFiber))
-    print("{}% of calories from {} grams of protein.".format(proteinPercentage, totalProtein))
-    print("{}% of calories from {} grams of fat.".format(fatPercentage, totalFat))
-    print("{}% of calories from {} grams of carbohydrates.".format(carbohydratePercentage, totalCarbohydrate))
-    print("{}% of calories are inaccurate from incorrect data.\n".format(abs(remainingPercentage)))
+    print("{:.2f}% of calories from {:.2f} grams of protein.".format(proteinPercentage, totalProtein))
+    print("{:.2f}% of calories from {:.2f} grams of fat.".format(fatPercentage, totalFat))
+    print("{:.2f}% of calories from {:.2f} grams of carbohydrates minus {:.2f} grams of fiber.".format(
+        carbohydratePercentage, totalCarbohydrate, totalFiber))
+    print("{:.2f}% of calories are inaccurate from incorrect data.\n".format(abs(remainingPercentage)))
 
 
 def return_pretty_consumption(foodsEaten: List[str]):
